@@ -13,15 +13,21 @@ public class PortfolioService
     private readonly IRepositoryStore _store;
     private readonly IGitHubClient _github;
     private readonly IScoringEngine _scoring;
+    private readonly IRepoAnalyzer? _analyzer;
+    private readonly ISdlcStore? _sdlcStore;
 
     public PortfolioService(
         IRepositoryStore store,
         IGitHubClient github,
-        IScoringEngine scoring)
+        IScoringEngine scoring,
+        IRepoAnalyzer? analyzer = null,
+        ISdlcStore? sdlcStore = null)
     {
         _store = store;
         _github = github;
         _scoring = scoring;
+        _analyzer = analyzer;
+        _sdlcStore = sdlcStore;
     }
 
     /// <summary>
@@ -498,6 +504,13 @@ public class PortfolioService
             if (scores.Count > 0)
             {
                 await _store.SaveManyScoresAsync(scores, ct);
+                
+                // Save report to SDLC store
+                if (_sdlcStore != null)
+                {
+                    await _sdlcStore.SaveReportAsync(report, ct);
+                }
+                
                 return new ReportResult
                 {
                     Success = true,
@@ -505,6 +518,12 @@ public class PortfolioService
                     Message = "Repository updated and rescored"
                 };
             }
+        }
+
+        // Still save the report even if no updates
+        if (_sdlcStore != null)
+        {
+            await _sdlcStore.SaveReportAsync(report, ct);
         }
 
         return new ReportResult
@@ -517,13 +536,13 @@ public class PortfolioService
     /// <summary>
     /// Get status reports for a repository.
     /// </summary>
-    public Task<IReadOnlyList<RepoStatusReport>> GetReportsAsync(
+    public async Task<IReadOnlyList<RepoStatusReport>> GetReportsAsync(
         string repositoryFullName, 
         int limit = 10, 
         CancellationToken ct = default)
     {
-        // TODO: Implement report storage
-        return Task.FromResult<IReadOnlyList<RepoStatusReport>>([]);
+        if (_sdlcStore == null) return [];
+        return await _sdlcStore.GetReportsAsync(repositoryFullName, limit, ct);
     }
 
     /// <summary>
@@ -540,26 +559,66 @@ public class PortfolioService
         if (repo == null) return null;
 
         var score = await _store.GetLatestScoreAsync(repo.Id, ct);
+        var insights = _sdlcStore != null 
+            ? await _sdlcStore.GetLatestInsightsAsync(repo.Id, ct) 
+            : null;
+        var report = _sdlcStore != null 
+            ? await _sdlcStore.GetLatestReportAsync(repo.FullName, ct) 
+            : null;
 
         return new RepoHealthSummary
         {
             Repository = repo,
             LatestScore = score,
-            LatestInsights = null, // TODO: Implement insights storage
-            LatestReport = null    // TODO: Implement report storage
+            LatestInsights = insights,
+            LatestReport = report
         };
     }
 
     /// <summary>
     /// Analyze a repository using LLM.
     /// </summary>
-    public Task<RepoInsights?> AnalyzeRepositoryAsync(
+    public async Task<RepoInsights?> AnalyzeRepositoryAsync(
         string repositoryFullName, 
         bool force = false, 
         CancellationToken ct = default)
     {
-        // TODO: Implement LLM analysis
-        throw new InvalidOperationException("LLM analysis not configured. Set OPENAI_API_KEY or ANTHROPIC_API_KEY.");
+        if (_analyzer == null)
+        {
+            throw new InvalidOperationException("AI analyzer not configured.");
+        }
+
+        var repo = await _store.GetByFullNameAsync(repositoryFullName, ct);
+        if (repo == null) return null;
+
+        // Check cache first (unless force refresh)
+        if (!force)
+        {
+            var cached = await _analyzer.GetCachedInsightsAsync(repo.Id, ct);
+            if (cached != null && !cached.IsStale)
+                return cached;
+        }
+
+        // Perform analysis
+        var insights = await _analyzer.AnalyzeAsync(repo, ct);
+        return insights;
+    }
+
+    /// <summary>
+    /// Check if AI analysis is available.
+    /// </summary>
+    public bool IsAiAnalysisAvailable => _analyzer?.IsAvailable ?? false;
+
+    /// <summary>
+    /// Get insights history for a repository.
+    /// </summary>
+    public async Task<IReadOnlyList<RepoInsights>> GetInsightsHistoryAsync(
+        Guid repositoryId,
+        int limit = 10,
+        CancellationToken ct = default)
+    {
+        if (_sdlcStore == null) return [];
+        return await _sdlcStore.GetInsightsHistoryAsync(repositoryId, limit, ct);
     }
 
     #endregion

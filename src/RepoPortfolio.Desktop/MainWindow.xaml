@@ -7,233 +7,347 @@
         xmlns:vm="clr-namespace:RepoPortfolio.Desktop.ViewModels"
         mc:Ignorable="d"
         d:DataContext="{d:DesignInstance Type=vm:MainViewModel}"
-        Title="Repo Portfolio Dashboard" Height="700" Width="1100"
-        Background="#1E1E2E" WindowStartupLocation="CenterScreen">
+        Title="Repo Portfolio Dashboard" Height="750" Width="1200"
+        Background="{DynamicResource BackgroundBrush}" 
+        WindowStartupLocation="CenterScreen">
     
     <Window.Resources>
-        <!-- Converters -->
         <local:InverseBoolConverter x:Key="InverseBoolConverter"/>
         <local:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
-        
-        <!-- Colors -->
-        <SolidColorBrush x:Key="BackgroundBrush" Color="#1E1E2E"/>
-        <SolidColorBrush x:Key="CardBrush" Color="#2D2D3D"/>
-        <SolidColorBrush x:Key="TextBrush" Color="#E0E0E0"/>
-        <SolidColorBrush x:Key="SecondaryTextBrush" Color="#A0A0A0"/>
-        <SolidColorBrush x:Key="AccentBrush" Color="#6366F1"/>
-        <SolidColorBrush x:Key="SuccessBrush" Color="#22C55E"/>
-        
-        <!-- Button Style -->
-        <Style x:Key="PrimaryButton" TargetType="Button">
-            <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="Padding" Value="16,8"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}" 
-                                CornerRadius="6" 
-                                Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-        
-        <!-- TextBox Style -->
-        <Style x:Key="ModernTextBox" TargetType="TextBox">
-            <Setter Property="Background" Value="#3D3D4D"/>
-            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Padding" Value="12,8"/>
-            <Setter Property="FontSize" Value="14"/>
-        </Style>
+        <local:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
     </Window.Resources>
     
-    <Grid Margin="20">
+    <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
         
-        <!-- Header -->
-        <StackPanel Grid.Row="0" Margin="0,0,0,20">
-            <TextBlock Text="Repo Portfolio Dashboard" 
-                       FontSize="28" FontWeight="Bold" 
-                       Foreground="{StaticResource TextBrush}"/>
-            <TextBlock Text="Monitor and score your GitHub repositories" 
-                       FontSize="14" 
-                       Foreground="{StaticResource SecondaryTextBrush}"
-                       Margin="0,4,0,0"/>
-        </StackPanel>
+        <!-- Menu Bar -->
+        <Menu Grid.Row="0" Background="{DynamicResource CardBrush}" Padding="4">
+            <MenuItem Header="_File" Foreground="{DynamicResource TextPrimaryBrush}">
+                <MenuItem Header="_Sync" Command="{Binding SyncRepositoriesCommand}"/>
+                <MenuItem Header="_Refresh" Command="{Binding LoadRepositoriesCommand}"/>
+                <Separator/>
+                <MenuItem Header="E_xit" Click="ExitMenuItem_Click"/>
+            </MenuItem>
+            <MenuItem Header="_View" Foreground="{DynamicResource TextPrimaryBrush}">
+                <MenuItem Header="_Modern Dark Theme" Command="{Binding ApplyDarkThemeCommand}"/>
+                <MenuItem Header="_Classic Windows Theme" Command="{Binding ApplyClassicThemeCommand}"/>
+            </MenuItem>
+            <MenuItem Header="_Tools" Foreground="{DynamicResource TextPrimaryBrush}">
+                <MenuItem Header="_Recalculate Scores" Command="{Binding RecalculateScoresCommand}"/>
+                <MenuItem Header="_Analyze with AI" Command="{Binding AnalyzeSelectedCommand}"/>
+            </MenuItem>
+            <MenuItem Header="_Help" Foreground="{DynamicResource TextPrimaryBrush}">
+                <MenuItem Header="_About" Click="AboutMenuItem_Click"/>
+            </MenuItem>
+        </Menu>
         
-        <!-- Sync Controls -->
-        <Border Grid.Row="1" Background="{StaticResource CardBrush}" 
-                CornerRadius="8" Padding="16" Margin="0,0,0,20">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                
-                <TextBox Grid.Column="0" 
-                         Style="{StaticResource ModernTextBox}"
-                         Text="{Binding Owner, UpdateSourceTrigger=PropertyChanged}"
-                         VerticalAlignment="Center"
-                         Margin="0,0,12,0">
-                    <TextBox.Resources>
-                        <Style TargetType="Border">
-                            <Setter Property="CornerRadius" Value="6"/>
-                        </Style>
-                    </TextBox.Resources>
-                </TextBox>
-                
-                <Button Grid.Column="1" Content="🔄 Sync from GitHub" 
-                        Style="{StaticResource PrimaryButton}"
-                        Command="{Binding SyncRepositoriesCommand}"
-                        IsEnabled="{Binding IsSyncing, Converter={StaticResource InverseBoolConverter}}"
-                        Margin="0,0,8,0"/>
-                
-                <Button Grid.Column="2" Content="📊 Recalculate Scores" 
-                        Style="{StaticResource PrimaryButton}"
-                        Command="{Binding RecalculateScoresCommand}"
-                        Margin="0,0,8,0"/>
-                
-                <Button Grid.Column="3" Content="🔃 Refresh" 
-                        Style="{StaticResource PrimaryButton}"
-                        Command="{Binding LoadRepositoriesCommand}"/>
-            </Grid>
-        </Border>
-        
-        <!-- Stats Cards -->
-        <Grid Grid.Row="2">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="200"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
+        <!-- Main Content -->
+        <Grid Grid.Row="1" Margin="16">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
             
-            <!-- Left Stats Panel -->
-            <StackPanel Grid.Column="0" Margin="0,0,16,0">
-                <Border Background="{StaticResource CardBrush}" CornerRadius="8" Padding="16" Margin="0,0,0,12">
-                    <StackPanel>
-                        <TextBlock Text="Total Repos" Foreground="{StaticResource SecondaryTextBrush}" FontSize="12"/>
-                        <TextBlock Text="{Binding TotalRepositories}" Foreground="{StaticResource TextBrush}" 
-                                   FontSize="32" FontWeight="Bold"/>
-                    </StackPanel>
-                </Border>
-                
-                <Border Background="{StaticResource CardBrush}" CornerRadius="8" Padding="16">
-                    <StackPanel>
-                        <TextBlock Text="Average Score" Foreground="{StaticResource SecondaryTextBrush}" FontSize="12"/>
-                        <TextBlock Foreground="{StaticResource SuccessBrush}" FontSize="32" FontWeight="Bold">
-                            <Run Text="{Binding AverageScore, StringFormat='{}{0:F1}'}"/><Run Text="/100"/>
-                        </TextBlock>
-                    </StackPanel>
-                </Border>
+            <!-- Header -->
+            <StackPanel Grid.Row="0" Margin="0,0,0,16">
+                <TextBlock Text="Repo Portfolio Dashboard" FontSize="24" FontWeight="Bold" 
+                           Foreground="{DynamicResource TextPrimaryBrush}"/>
+                <TextBlock Text="Monitor, score, and analyze your GitHub repositories" FontSize="13" 
+                           Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,4,0,0"/>
             </StackPanel>
             
-            <!-- Repository List -->
-            <Border Grid.Column="1" Background="{StaticResource CardBrush}" CornerRadius="8" Padding="16">
+            <!-- Sync Controls -->
+            <Border Grid.Row="1" Style="{DynamicResource Card}" Margin="0,0,0,16">
                 <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
-                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
                     
-                    <TextBlock Grid.Row="0" Text="Repositories" 
-                               Foreground="{StaticResource TextBrush}" 
-                               FontSize="16" FontWeight="SemiBold" 
-                               Margin="0,0,0,12"/>
+                    <TextBox Grid.Column="0" Style="{DynamicResource ModernTextBox}"
+                             Text="{Binding Owner, UpdateSourceTrigger=PropertyChanged}"
+                             VerticalAlignment="Center" Margin="0,0,12,0"/>
                     
-                    <ListView Grid.Row="1" 
-                              ItemsSource="{Binding Repositories}"
-                              SelectedItem="{Binding SelectedRepository}"
-                              Background="Transparent"
-                              BorderThickness="0"
-                              ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-                        <ListView.ItemContainerStyle>
-                            <Style TargetType="ListViewItem">
-                                <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-                                <Setter Property="Margin" Value="0,2"/>
-                                <Setter Property="Padding" Value="8"/>
-                                <Setter Property="Template">
-                                    <Setter.Value>
-                                        <ControlTemplate TargetType="ListViewItem">
-                                            <Border Background="#3D3D4D" CornerRadius="6" Padding="12">
-                                                <ContentPresenter/>
-                                            </Border>
-                                        </ControlTemplate>
-                                    </Setter.Value>
-                                </Setter>
-                            </Style>
-                        </ListView.ItemContainerStyle>
+                    <Button Grid.Column="1" Content="🔄 Sync" Style="{DynamicResource PrimaryButton}"
+                            Command="{Binding SyncRepositoriesCommand}"
+                            IsEnabled="{Binding IsSyncing, Converter={StaticResource InverseBoolConverter}}"
+                            Margin="0,0,8,0"/>
+                    
+                    <Button Grid.Column="2" Content="📊 Recalculate" Style="{DynamicResource SecondaryButton}"
+                            Command="{Binding RecalculateScoresCommand}" Margin="0,0,8,0"/>
+                    
+                    <Button Grid.Column="3" Content="🔃 Refresh" Style="{DynamicResource SecondaryButton}"
+                            Command="{Binding LoadRepositoriesCommand}"/>
+                </Grid>
+            </Border>
+            
+            <!-- Main Content Area -->
+            <Grid Grid.Row="2">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="200"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="300"/>
+                </Grid.ColumnDefinitions>
+                
+                <!-- Left Stats Panel -->
+                <StackPanel Grid.Column="0" Margin="0,0,12,0">
+                    <Border Style="{DynamicResource Card}" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="Total Repos" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="12"/>
+                            <TextBlock Text="{Binding TotalRepositories}" Foreground="{DynamicResource TextPrimaryBrush}" 
+                                       FontSize="32" FontWeight="Bold"/>
+                        </StackPanel>
+                    </Border>
+                    
+                    <Border Style="{DynamicResource Card}" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="Avg Score" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="12"/>
+                            <TextBlock Foreground="{DynamicResource SuccessBrush}" FontSize="32" FontWeight="Bold">
+                                <Run Text="{Binding AverageScore, StringFormat='{}{0:F1}'}"/><Run Text="/100"/>
+                            </TextBlock>
+                        </StackPanel>
+                    </Border>
+                    
+                    <Border Style="{DynamicResource Card}" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="Healthy" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="12"/>
+                            <TextBlock Text="{Binding HealthyRepos}" Foreground="{DynamicResource SuccessBrush}" 
+                                       FontSize="28" FontWeight="Bold"/>
+                        </StackPanel>
+                    </Border>
+                    
+                    <Border Style="{DynamicResource Card}">
+                        <StackPanel>
+                            <TextBlock Text="At Risk" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="12"/>
+                            <TextBlock Text="{Binding AtRiskRepos}" Foreground="{DynamicResource ErrorBrush}" 
+                                       FontSize="28" FontWeight="Bold"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+                
+                <!-- Repository List -->
+                <Border Grid.Column="1" Style="{DynamicResource Card}" Margin="0,0,12,0">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
                         
-                        <ListView.ItemTemplate>
-                            <DataTemplate>
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="80"/>
-                                    </Grid.ColumnDefinitions>
-                                    
-                                    <StackPanel Grid.Column="0">
-                                        <TextBlock Text="{Binding Name}" 
-                                                   Foreground="{StaticResource TextBrush}" 
-                                                   FontSize="14" FontWeight="SemiBold"/>
-                                        <TextBlock Text="{Binding Description}" 
-                                                   Foreground="{StaticResource SecondaryTextBrush}" 
-                                                   FontSize="12" TextTrimming="CharacterEllipsis"/>
-                                        <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-                                            <TextBlock Text="{Binding Language}" 
-                                                       Foreground="{StaticResource AccentBrush}" 
-                                                       FontSize="11" Margin="0,0,12,0"/>
-                                            <TextBlock Text="{Binding LastCommit, StringFormat='Last: {0}'}" 
-                                                       Foreground="{StaticResource SecondaryTextBrush}" 
-                                                       FontSize="11"/>
+                        <TextBlock Grid.Row="0" Text="Repositories" Foreground="{DynamicResource TextPrimaryBrush}" 
+                                   FontSize="16" FontWeight="SemiBold" Margin="0,0,0,12"/>
+                        
+                        <ListView Grid.Row="1" ItemsSource="{Binding Repositories}" SelectedItem="{Binding SelectedRepository}"
+                                  Background="Transparent" BorderThickness="0"
+                                  ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                            <ListView.ItemContainerStyle>
+                                <Style TargetType="ListViewItem">
+                                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                    <Setter Property="Margin" Value="0,2"/>
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="ListViewItem">
+                                                <Border x:Name="border" Background="{DynamicResource CardHoverBrush}" 
+                                                        CornerRadius="{DynamicResource CornerRadiusMedium}" Padding="12">
+                                                    <ContentPresenter/>
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsSelected" Value="True">
+                                                        <Setter TargetName="border" Property="Background" Value="{DynamicResource AccentBrush}"/>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </ListView.ItemContainerStyle>
+                            
+                            <ListView.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="70"/>
+                                        </Grid.ColumnDefinitions>
+                                        
+                                        <StackPanel Grid.Column="0">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="{Binding Name}" Foreground="{DynamicResource TextPrimaryBrush}" 
+                                                           FontSize="14" FontWeight="SemiBold"/>
+                                                <TextBlock Text=" 🔀" FontSize="10"
+                                                           Visibility="{Binding IsFork, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                            </StackPanel>
+                                            <TextBlock Text="{Binding Description}" Foreground="{DynamicResource TextSecondaryBrush}" 
+                                                       FontSize="11" TextTrimming="CharacterEllipsis" MaxWidth="350"/>
+                                            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                                <TextBlock Text="{Binding Language}" Foreground="{DynamicResource AccentBrush}" 
+                                                           FontSize="10" Margin="0,0,10,0"/>
+                                                <TextBlock Text="{Binding LastCommitDisplay}" Foreground="{DynamicResource TextSecondaryBrush}" 
+                                                           FontSize="10"/>
+                                            </StackPanel>
                                         </StackPanel>
-                                    </StackPanel>
-                                    
-                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0">
-                                        <TextBlock Text="⭐" FontSize="12" Margin="0,0,2,0"/>
-                                        <TextBlock Text="{Binding Stars}" 
-                                                   Foreground="{StaticResource SecondaryTextBrush}" 
-                                                   FontSize="12" Margin="0,0,8,0"/>
-                                        <TextBlock Text="🔧" FontSize="12" Margin="0,0,2,0" 
-                                                   Visibility="{Binding HasCiCd, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                                        <TextBlock Text="✅" FontSize="12" 
-                                                   Visibility="{Binding HasTests, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                                    </StackPanel>
-                                    
-                                    <Border Grid.Column="2" CornerRadius="4" Padding="8,4" 
-                                            HorizontalAlignment="Right" VerticalAlignment="Center">
+                                        
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0">
+                                            <TextBlock Text="⭐" FontSize="10"/>
+                                            <TextBlock Text="{Binding Stars}" Foreground="{DynamicResource TextSecondaryBrush}" 
+                                                       FontSize="10" Margin="2,0,6,0"/>
+                                            <TextBlock Text="🔧" FontSize="10" 
+                                                       Visibility="{Binding HasCiCd, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                            <TextBlock Text="✅" FontSize="10"
+                                                       Visibility="{Binding HasTests, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                        </StackPanel>
+                                        
+                                        <Border Grid.Column="2" Padding="8,4" HorizontalAlignment="Right" VerticalAlignment="Center"
+                                                CornerRadius="4">
+                                            <Border.Background>
+                                                <SolidColorBrush Color="{Binding HealthColor}"/>
+                                            </Border.Background>
+                                            <TextBlock Text="{Binding TotalScore, StringFormat='{}{0:F0}'}" 
+                                                       Foreground="White" FontWeight="Bold" FontSize="14" HorizontalAlignment="Center"/>
+                                        </Border>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListView.ItemTemplate>
+                        </ListView>
+                    </Grid>
+                </Border>
+                
+                <!-- Details Panel -->
+                <Border Grid.Column="2" Style="{DynamicResource Card}">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel>
+                            <TextBlock Text="Details" Foreground="{DynamicResource TextPrimaryBrush}" 
+                                       FontSize="16" FontWeight="SemiBold" Margin="0,0,0,12"/>
+                            
+                            <TextBlock Text="Select a repository" Foreground="{DynamicResource TextSecondaryBrush}" FontStyle="Italic"
+                                       Visibility="{Binding SelectedRepository, Converter={StaticResource NullToVisibilityConverter}, ConverterParameter=Invert}"/>
+                            
+                            <StackPanel DataContext="{Binding SelectedRepository}"
+                                        Visibility="{Binding DataContext.SelectedRepository, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource NullToVisibilityConverter}}">
+                                
+                                <TextBlock Text="{Binding FullName}" Foreground="{DynamicResource TextPrimaryBrush}" 
+                                           FontSize="14" FontWeight="Bold" TextWrapping="Wrap"/>
+                                
+                                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                    <Border Padding="8,4" CornerRadius="4">
                                         <Border.Background>
                                             <SolidColorBrush Color="{Binding HealthColor}"/>
                                         </Border.Background>
-                                        <TextBlock Text="{Binding TotalScore, StringFormat='{}{0:F0}'}" 
-                                                   Foreground="White" FontWeight="Bold" FontSize="14"/>
+                                        <TextBlock Foreground="White" FontWeight="Bold">
+                                            <Run Text="{Binding TotalScore, StringFormat='{}{0:F0}'}"/><Run Text="/100"/>
+                                        </TextBlock>
                                     </Border>
+                                    
+                                    <Border Padding="8,4" Margin="8,0,0,0" CornerRadius="4"
+                                            Visibility="{Binding HasInsights, Converter={StaticResource BoolToVisibilityConverter}}">
+                                        <Border.Background>
+                                            <SolidColorBrush Color="{Binding PhaseColor}"/>
+                                        </Border.Background>
+                                        <TextBlock Foreground="White" FontSize="12">
+                                            <Run Text="{Binding PhaseIcon}"/><Run Text=" "/><Run Text="{Binding Phase}"/>
+                                        </TextBlock>
+                                    </Border>
+                                </StackPanel>
+                                
+                                <TextBlock Text="Scores" Foreground="{DynamicResource TextSecondaryBrush}" 
+                                           FontSize="11" FontWeight="SemiBold" Margin="0,16,0,8"/>
+                                
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="50"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/>
+                                    </Grid.RowDefinitions>
+                                    
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Activity" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
+                                    <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding ActivityScore, StringFormat='{}{0:F0}'}" 
+                                               Foreground="{DynamicResource TextPrimaryBrush}" FontWeight="SemiBold" HorizontalAlignment="Right"/>
+                                    
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Quality" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
+                                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding QualityScore, StringFormat='{}{0:F0}'}" 
+                                               Foreground="{DynamicResource TextPrimaryBrush}" FontWeight="SemiBold" HorizontalAlignment="Right"/>
+                                    
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Maturity" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
+                                    <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding MaturityScore, StringFormat='{}{0:F0}'}" 
+                                               Foreground="{DynamicResource TextPrimaryBrush}" FontWeight="SemiBold" HorizontalAlignment="Right"/>
+                                    
+                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="Risk" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
+                                    <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding RiskScore, StringFormat='{}{0:F0}'}" 
+                                               Foreground="{DynamicResource TextPrimaryBrush}" FontWeight="SemiBold" HorizontalAlignment="Right"/>
                                 </Grid>
-                            </DataTemplate>
-                        </ListView.ItemTemplate>
-                    </ListView>
+                                
+                                <TextBlock Text="Stats" Foreground="{DynamicResource TextSecondaryBrush}" 
+                                           FontSize="11" FontWeight="SemiBold" Margin="0,16,0,8"/>
+                                
+                                <WrapPanel>
+                                    <StackPanel Margin="0,0,16,8">
+                                        <TextBlock Text="⭐" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="10"/>
+                                        <TextBlock Text="{Binding Stars}" Foreground="{DynamicResource TextPrimaryBrush}" FontWeight="Bold"/>
+                                    </StackPanel>
+                                    <StackPanel Margin="0,0,16,8">
+                                        <TextBlock Text="🔀" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="10"/>
+                                        <TextBlock Text="{Binding Forks}" Foreground="{DynamicResource TextPrimaryBrush}" FontWeight="Bold"/>
+                                    </StackPanel>
+                                    <StackPanel Margin="0,0,16,8">
+                                        <TextBlock Text="⚠️" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="10"/>
+                                        <TextBlock Text="{Binding Issues}" Foreground="{DynamicResource TextPrimaryBrush}" FontWeight="Bold"/>
+                                    </StackPanel>
+                                    <StackPanel Margin="0,0,0,8">
+                                        <TextBlock Text="🔃" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="10"/>
+                                        <TextBlock Text="{Binding PullRequests}" Foreground="{DynamicResource TextPrimaryBrush}" FontWeight="Bold"/>
+                                    </StackPanel>
+                                </WrapPanel>
+                                
+                                <WrapPanel Margin="0,8,0,0">
+                                    <TextBlock Text="📄" FontSize="10" Margin="0,0,4,0"
+                                               Visibility="{Binding HasReadme, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                    <TextBlock Text="📜" FontSize="10" Margin="0,0,4,0"
+                                               Visibility="{Binding HasLicense, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                    <TextBlock Text="🔧" FontSize="10" Margin="0,0,4,0"
+                                               Visibility="{Binding HasCiCd, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                    <TextBlock Text="✅" FontSize="10"
+                                               Visibility="{Binding HasTests, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                </WrapPanel>
+                                
+                                <StackPanel Visibility="{Binding HasInsights, Converter={StaticResource BoolToVisibilityConverter}}" Margin="0,12,0,0">
+                                    <TextBlock Text="🤖 AI Insights" Foreground="{DynamicResource AccentBrush}" 
+                                               FontSize="11" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                                    <TextBlock Text="{Binding PhaseRationale}" Foreground="{DynamicResource TextSecondaryBrush}"
+                                               FontSize="11" TextWrapping="Wrap"/>
+                                </StackPanel>
+                                
+                                <Button Content="🤖 Analyze" Style="{DynamicResource SecondaryButton}" Margin="0,16,0,0"
+                                        Command="{Binding DataContext.AnalyzeSelectedCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                        HorizontalAlignment="Stretch"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Border>
+            </Grid>
+            
+            <!-- Status Bar -->
+            <Border Grid.Row="3" Style="{DynamicResource Card}" Margin="0,16,0,0" Padding="12,8">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    
+                    <TextBlock Grid.Column="0" Text="{Binding StatusMessage}" 
+                               Foreground="{DynamicResource TextSecondaryBrush}" FontSize="12"/>
+                    <TextBlock Grid.Column="1" Text="{Binding CurrentThemeName}" 
+                               Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
                 </Grid>
             </Border>
         </Grid>
-        
-        <!-- Status Bar -->
-        <Border Grid.Row="3" Background="{StaticResource CardBrush}" 
-                CornerRadius="8" Padding="12,8" Margin="0,16,0,0">
-            <TextBlock Text="{Binding StatusMessage}" 
-                       Foreground="{StaticResource SecondaryTextBrush}" 
-                       FontSize="12"/>
-        </Border>
     </Grid>
 </Window>
