@@ -1,0 +1,6 @@
+@RepoPortfolio.Api_HostAddress = http://localhost:5196
+
+GET {{RepoPortfolio.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

@@ -1,0 +1,239 @@
+﻿<Window x:Class="RepoPortfolio.Desktop.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:RepoPortfolio.Desktop"
+        xmlns:vm="clr-namespace:RepoPortfolio.Desktop.ViewModels"
+        mc:Ignorable="d"
+        d:DataContext="{d:DesignInstance Type=vm:MainViewModel}"
+        Title="Repo Portfolio Dashboard" Height="700" Width="1100"
+        Background="#1E1E2E" WindowStartupLocation="CenterScreen">
+    
+    <Window.Resources>
+        <!-- Converters -->
+        <local:InverseBoolConverter x:Key="InverseBoolConverter"/>
+        <local:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+        
+        <!-- Colors -->
+        <SolidColorBrush x:Key="BackgroundBrush" Color="#1E1E2E"/>
+        <SolidColorBrush x:Key="CardBrush" Color="#2D2D3D"/>
+        <SolidColorBrush x:Key="TextBrush" Color="#E0E0E0"/>
+        <SolidColorBrush x:Key="SecondaryTextBrush" Color="#A0A0A0"/>
+        <SolidColorBrush x:Key="AccentBrush" Color="#6366F1"/>
+        <SolidColorBrush x:Key="SuccessBrush" Color="#22C55E"/>
+        
+        <!-- Button Style -->
+        <Style x:Key="PrimaryButton" TargetType="Button">
+            <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Padding" Value="16,8"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" 
+                                CornerRadius="6" 
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        
+        <!-- TextBox Style -->
+        <Style x:Key="ModernTextBox" TargetType="TextBox">
+            <Setter Property="Background" Value="#3D3D4D"/>
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="12,8"/>
+            <Setter Property="FontSize" Value="14"/>
+        </Style>
+    </Window.Resources>
+    
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        
+        <!-- Header -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,20">
+            <TextBlock Text="Repo Portfolio Dashboard" 
+                       FontSize="28" FontWeight="Bold" 
+                       Foreground="{StaticResource TextBrush}"/>
+            <TextBlock Text="Monitor and score your GitHub repositories" 
+                       FontSize="14" 
+                       Foreground="{StaticResource SecondaryTextBrush}"
+                       Margin="0,4,0,0"/>
+        </StackPanel>
+        
+        <!-- Sync Controls -->
+        <Border Grid.Row="1" Background="{StaticResource CardBrush}" 
+                CornerRadius="8" Padding="16" Margin="0,0,0,20">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                
+                <TextBox Grid.Column="0" 
+                         Style="{StaticResource ModernTextBox}"
+                         Text="{Binding Owner, UpdateSourceTrigger=PropertyChanged}"
+                         VerticalAlignment="Center"
+                         Margin="0,0,12,0">
+                    <TextBox.Resources>
+                        <Style TargetType="Border">
+                            <Setter Property="CornerRadius" Value="6"/>
+                        </Style>
+                    </TextBox.Resources>
+                </TextBox>
+                
+                <Button Grid.Column="1" Content="🔄 Sync from GitHub" 
+                        Style="{StaticResource PrimaryButton}"
+                        Command="{Binding SyncRepositoriesCommand}"
+                        IsEnabled="{Binding IsSyncing, Converter={StaticResource InverseBoolConverter}}"
+                        Margin="0,0,8,0"/>
+                
+                <Button Grid.Column="2" Content="📊 Recalculate Scores" 
+                        Style="{StaticResource PrimaryButton}"
+                        Command="{Binding RecalculateScoresCommand}"
+                        Margin="0,0,8,0"/>
+                
+                <Button Grid.Column="3" Content="🔃 Refresh" 
+                        Style="{StaticResource PrimaryButton}"
+                        Command="{Binding LoadRepositoriesCommand}"/>
+            </Grid>
+        </Border>
+        
+        <!-- Stats Cards -->
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="200"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            
+            <!-- Left Stats Panel -->
+            <StackPanel Grid.Column="0" Margin="0,0,16,0">
+                <Border Background="{StaticResource CardBrush}" CornerRadius="8" Padding="16" Margin="0,0,0,12">
+                    <StackPanel>
+                        <TextBlock Text="Total Repos" Foreground="{StaticResource SecondaryTextBrush}" FontSize="12"/>
+                        <TextBlock Text="{Binding TotalRepositories}" Foreground="{StaticResource TextBrush}" 
+                                   FontSize="32" FontWeight="Bold"/>
+                    </StackPanel>
+                </Border>
+                
+                <Border Background="{StaticResource CardBrush}" CornerRadius="8" Padding="16">
+                    <StackPanel>
+                        <TextBlock Text="Average Score" Foreground="{StaticResource SecondaryTextBrush}" FontSize="12"/>
+                        <TextBlock Foreground="{StaticResource SuccessBrush}" FontSize="32" FontWeight="Bold">
+                            <Run Text="{Binding AverageScore, StringFormat='{}{0:F1}'}"/><Run Text="/100"/>
+                        </TextBlock>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+            
+            <!-- Repository List -->
+            <Border Grid.Column="1" Background="{StaticResource CardBrush}" CornerRadius="8" Padding="16">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    
+                    <TextBlock Grid.Row="0" Text="Repositories" 
+                               Foreground="{StaticResource TextBrush}" 
+                               FontSize="16" FontWeight="SemiBold" 
+                               Margin="0,0,0,12"/>
+                    
+                    <ListView Grid.Row="1" 
+                              ItemsSource="{Binding Repositories}"
+                              SelectedItem="{Binding SelectedRepository}"
+                              Background="Transparent"
+                              BorderThickness="0"
+                              ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                        <ListView.ItemContainerStyle>
+                            <Style TargetType="ListViewItem">
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                <Setter Property="Margin" Value="0,2"/>
+                                <Setter Property="Padding" Value="8"/>
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="ListViewItem">
+                                            <Border Background="#3D3D4D" CornerRadius="6" Padding="12">
+                                                <ContentPresenter/>
+                                            </Border>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </ListView.ItemContainerStyle>
+                        
+                        <ListView.ItemTemplate>
+                            <DataTemplate>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="80"/>
+                                    </Grid.ColumnDefinitions>
+                                    
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="{Binding Name}" 
+                                                   Foreground="{StaticResource TextBrush}" 
+                                                   FontSize="14" FontWeight="SemiBold"/>
+                                        <TextBlock Text="{Binding Description}" 
+                                                   Foreground="{StaticResource SecondaryTextBrush}" 
+                                                   FontSize="12" TextTrimming="CharacterEllipsis"/>
+                                        <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                            <TextBlock Text="{Binding Language}" 
+                                                       Foreground="{StaticResource AccentBrush}" 
+                                                       FontSize="11" Margin="0,0,12,0"/>
+                                            <TextBlock Text="{Binding LastCommit, StringFormat='Last: {0}'}" 
+                                                       Foreground="{StaticResource SecondaryTextBrush}" 
+                                                       FontSize="11"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                    
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0">
+                                        <TextBlock Text="⭐" FontSize="12" Margin="0,0,2,0"/>
+                                        <TextBlock Text="{Binding Stars}" 
+                                                   Foreground="{StaticResource SecondaryTextBrush}" 
+                                                   FontSize="12" Margin="0,0,8,0"/>
+                                        <TextBlock Text="🔧" FontSize="12" Margin="0,0,2,0" 
+                                                   Visibility="{Binding HasCiCd, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                        <TextBlock Text="✅" FontSize="12" 
+                                                   Visibility="{Binding HasTests, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                    </StackPanel>
+                                    
+                                    <Border Grid.Column="2" CornerRadius="4" Padding="8,4" 
+                                            HorizontalAlignment="Right" VerticalAlignment="Center">
+                                        <Border.Background>
+                                            <SolidColorBrush Color="{Binding HealthColor}"/>
+                                        </Border.Background>
+                                        <TextBlock Text="{Binding TotalScore, StringFormat='{}{0:F0}'}" 
+                                                   Foreground="White" FontWeight="Bold" FontSize="14"/>
+                                    </Border>
+                                </Grid>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                </Grid>
+            </Border>
+        </Grid>
+        
+        <!-- Status Bar -->
+        <Border Grid.Row="3" Background="{StaticResource CardBrush}" 
+                CornerRadius="8" Padding="12,8" Margin="0,16,0,0">
+            <TextBlock Text="{Binding StatusMessage}" 
+                       Foreground="{StaticResource SecondaryTextBrush}" 
+                       FontSize="12"/>
+        </Border>
+    </Grid>
+</Window>

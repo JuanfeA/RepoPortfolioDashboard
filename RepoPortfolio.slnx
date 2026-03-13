@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/RepoPortfolio.Api/RepoPortfolio.Api.csproj" />
+    <Project Path="src/RepoPortfolio.Application/RepoPortfolio.Application.csproj" />
+    <Project Path="src/RepoPortfolio.Core/RepoPortfolio.Core.csproj" />
+    <Project Path="src/RepoPortfolio.Desktop/RepoPortfolio.Desktop.csproj" />
+    <Project Path="src/RepoPortfolio.Infrastructure/RepoPortfolio.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/RepoPortfolio.Core.Tests/RepoPortfolio.Core.Tests.csproj" />
+  </Folder>
+</Solution>
