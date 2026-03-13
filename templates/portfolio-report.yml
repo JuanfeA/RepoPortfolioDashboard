@@ -1,0 +1,142 @@
+# Portfolio Health Reporter Workflow
+# 
+# Add this workflow to your repository to automatically report health metrics
+# to the Repo Portfolio Dashboard.
+#
+# Setup:
+# 1. Copy this file to .github/workflows/portfolio-report.yml
+# 2. Set PORTFOLIO_API_URL in your repo's variables (Settings > Secrets and variables > Actions > Variables)
+# 3. Set PORTFOLIO_TOKEN in your repo's secrets (Settings > Secrets and variables > Actions > Secrets)
+#
+# The workflow runs on:
+# - Push to main/master/develop
+# - Pull request events
+# - Daily at 6 AM UTC
+
+name: Portfolio Health Report
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    types: [opened, closed, synchronize]
+  schedule:
+    - cron: '0 6 * * *'  # Daily at 6 AM UTC
+  workflow_dispatch:  # Manual trigger
+
+env:
+  REPORTER_VERSION: "1.0.0"
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for metrics
+          
+      - name: Calculate Git Metrics
+        id: git_metrics
+        run: |
+          # Commits in last 30 days
+          COMMITS_30D=$(git rev-list --count --since="30 days ago" HEAD 2>/dev/null || echo 0)
+          echo "commits_30d=$COMMITS_30D" >> $GITHUB_OUTPUT
+          
+          # Days since last commit
+          LAST_COMMIT=$(git log -1 --format=%ct 2>/dev/null || echo 0)
+          NOW=$(date +%s)
+          DAYS_SINCE=$(( (NOW - LAST_COMMIT) / 86400 ))
+          echo "days_since_commit=$DAYS_SINCE" >> $GITHUB_OUTPUT
+          
+          # Contributors count
+          CONTRIBUTORS=$(git shortlog -sn --all 2>/dev/null | wc -l || echo 1)
+          echo "contributors=$CONTRIBUTORS" >> $GITHUB_OUTPUT
+          
+      - name: Check Project Files
+        id: project_files
+        run: |
+          echo "has_readme=$([[ -f README.md ]] && echo true || echo false)" >> $GITHUB_OUTPUT
+          echo "has_license=$([[ -f LICENSE ]] || [[ -f LICENSE.md ]] && echo true || echo false)" >> $GITHUB_OUTPUT
+          echo "has_tests=$([[ -d tests ]] || [[ -d test ]] || [[ -d __tests__ ]] || [[ -d spec ]] && echo true || echo false)" >> $GITHUB_OUTPUT
+          echo "has_ci=$([[ -d .github/workflows ]] && echo true || echo false)" >> $GITHUB_OUTPUT
+          echo "has_contributing=$([[ -f CONTRIBUTING.md ]] && echo true || echo false)" >> $GITHUB_OUTPUT
+          echo "has_progress=$([[ -f PROGRESS.md ]] && echo true || echo false)" >> $GITHUB_OUTPUT
+          
+      - name: Get GitHub Metrics
+        id: github_metrics
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Open issues and PRs
+          OPEN_ISSUES=$(gh issue list --state open --json number --jq 'length' 2>/dev/null || echo 0)
+          OPEN_PRS=$(gh pr list --state open --json number --jq 'length' 2>/dev/null || echo 0)
+          
+          echo "open_issues=$OPEN_ISSUES" >> $GITHUB_OUTPUT
+          echo "open_prs=$OPEN_PRS" >> $GITHUB_OUTPUT
+          
+      - name: Parse PROGRESS.md
+        id: progress
+        if: steps.project_files.outputs.has_progress == 'true'
+        run: |
+          # Extract machine-readable frontmatter if present
+          if grep -q "PORTFOLIO-STATUS" PROGRESS.md 2>/dev/null; then
+            PHASE=$(sed -n '/^phase:/p' PROGRESS.md | head -1 | cut -d: -f2 | tr -d ' ')
+            MATURITY=$(sed -n '/^maturity:/p' PROGRESS.md | head -1 | cut -d: -f2 | tr -d ' ')
+            echo "phase=${PHASE:-UNKNOWN}" >> $GITHUB_OUTPUT
+            echo "maturity=${MATURITY:-0}" >> $GITHUB_OUTPUT
+            echo "has_status=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_status=false" >> $GITHUB_OUTPUT
+          fi
+          
+      - name: Report to Portfolio Dashboard
+        if: vars.PORTFOLIO_API_URL != ''
+        run: |
+          # Build the JSON payload
+          PAYLOAD=$(cat <<EOF
+          {
+            "repository": "${{ github.repository }}",
+            "sha": "${{ github.sha }}",
+            "branch": "${{ github.ref_name }}",
+            "event": "${{ github.event_name }}",
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "reporterVersion": "${{ env.REPORTER_VERSION }}",
+            "metrics": {
+              "commits_30d": ${{ steps.git_metrics.outputs.commits_30d }},
+              "days_since_commit": ${{ steps.git_metrics.outputs.days_since_commit }},
+              "contributors": ${{ steps.git_metrics.outputs.contributors }},
+              "has_readme": ${{ steps.project_files.outputs.has_readme }},
+              "has_license": ${{ steps.project_files.outputs.has_license }},
+              "has_tests": ${{ steps.project_files.outputs.has_tests }},
+              "has_ci": ${{ steps.project_files.outputs.has_ci }},
+              "has_contributing": ${{ steps.project_files.outputs.has_contributing }},
+              "open_issues": ${{ steps.github_metrics.outputs.open_issues }},
+              "open_prs": ${{ steps.github_metrics.outputs.open_prs }}
+            },
+            "sdlc": {
+              "phase": "${{ steps.progress.outputs.phase || 'UNKNOWN' }}",
+              "maturity": ${{ steps.progress.outputs.maturity || 0 }}
+            }
+          }
+          EOF
+          )
+          
+          echo "Sending report to Portfolio Dashboard..."
+          echo "$PAYLOAD" | jq .
+          
+          curl -X POST "${{ vars.PORTFOLIO_API_URL }}/api/repos/report" \
+            -H "Authorization: Bearer ${{ secrets.PORTFOLIO_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD" \
+            --fail-with-body
+            
+      - name: Report Skipped (No API URL)
+        if: vars.PORTFOLIO_API_URL == ''
+        run: |
+          echo "⚠️ PORTFOLIO_API_URL not configured. Skipping report."
+          echo "To enable reporting:"
+          echo "1. Go to Settings > Secrets and variables > Actions > Variables"
+          echo "2. Add PORTFOLIO_API_URL with your dashboard API URL"
+          echo "3. Add PORTFOLIO_TOKEN secret with your API token"

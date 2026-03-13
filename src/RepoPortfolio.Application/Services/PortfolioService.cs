@@ -438,6 +438,138 @@ public class PortfolioService
             }
         ];
     }
+
+    #region SDLC & Reports
+
+    /// <summary>
+    /// Process a status report from a repository's CI/CD pipeline.
+    /// </summary>
+    public async Task<ReportResult> ProcessReportAsync(RepoStatusReport report, CancellationToken ct = default)
+    {
+        // Find or create the repository
+        var repos = await _store.GetAllAsync(ct);
+        var repo = repos.FirstOrDefault(r => 
+            r.FullName.Equals(report.RepositoryFullName, StringComparison.OrdinalIgnoreCase));
+
+        if (repo == null)
+        {
+            // Unknown repo - store report but can't score
+            return new ReportResult
+            {
+                Success = true,
+                Message = $"Report received for unknown repository {report.RepositoryFullName}. Consider syncing first."
+            };
+        }
+
+        // Update repo with reported metrics
+        bool updated = false;
+        
+        if (report.HasReadme.HasValue) { repo.HasReadme = report.HasReadme.Value; updated = true; }
+        if (report.HasLicense.HasValue) { repo.HasLicense = report.HasLicense.Value; updated = true; }
+        if (report.HasTests.HasValue) { repo.HasTests = report.HasTests.Value; updated = true; }
+        if (report.HasCi.HasValue) { repo.HasCiCd = report.HasCi.Value; updated = true; }
+        if (report.OpenIssues.HasValue) { repo.OpenIssueCount = report.OpenIssues.Value; updated = true; }
+        if (report.OpenPrs.HasValue) { repo.OpenPullRequestCount = report.OpenPrs.Value; updated = true; }
+        if (report.TestCoverage.HasValue) { repo.TestCoverage = report.TestCoverage.Value; updated = true; }
+        if (report.Commits30Days.HasValue) { repo.CommitCount = report.Commits30Days.Value; updated = true; }
+        
+        if (report.ReportedPhase.HasValue)
+        {
+            repo.Maturity = report.ReportedPhase.Value switch
+            {
+                SdlcPhase.Ideation or SdlcPhase.Planning => MaturityLevel.Prototype,
+                SdlcPhase.Development => MaturityLevel.Development,
+                SdlcPhase.Testing => MaturityLevel.Beta,
+                SdlcPhase.Release or SdlcPhase.Maintenance => MaturityLevel.Production,
+                SdlcPhase.Deprecated => MaturityLevel.Deprecated,
+                _ => repo.Maturity
+            };
+            updated = true;
+        }
+
+        if (updated)
+        {
+            repo.SyncedAt = DateTime.UtcNow;
+            await _store.SaveAsync(repo, ct);
+            
+            // Recalculate score
+            var criteria = await _store.GetActiveCriteriaAsync(ct);
+            var scores = _scoring.CalculateScores([repo], criteria).ToList();
+            if (scores.Count > 0)
+            {
+                await _store.SaveManyScoresAsync(scores, ct);
+                return new ReportResult
+                {
+                    Success = true,
+                    NewScore = scores[0].TotalScore,
+                    Message = "Repository updated and rescored"
+                };
+            }
+        }
+
+        return new ReportResult
+        {
+            Success = true,
+            Message = "Report received"
+        };
+    }
+
+    /// <summary>
+    /// Get status reports for a repository.
+    /// </summary>
+    public Task<IReadOnlyList<RepoStatusReport>> GetReportsAsync(
+        string repositoryFullName, 
+        int limit = 10, 
+        CancellationToken ct = default)
+    {
+        // TODO: Implement report storage
+        return Task.FromResult<IReadOnlyList<RepoStatusReport>>([]);
+    }
+
+    /// <summary>
+    /// Get health summary for a repository.
+    /// </summary>
+    public async Task<RepoHealthSummary?> GetHealthSummaryAsync(
+        string repositoryFullName, 
+        CancellationToken ct = default)
+    {
+        var repos = await _store.GetAllAsync(ct);
+        var repo = repos.FirstOrDefault(r => 
+            r.FullName.Equals(repositoryFullName, StringComparison.OrdinalIgnoreCase));
+
+        if (repo == null) return null;
+
+        var score = await _store.GetLatestScoreAsync(repo.Id, ct);
+
+        return new RepoHealthSummary
+        {
+            Repository = repo,
+            LatestScore = score,
+            LatestInsights = null, // TODO: Implement insights storage
+            LatestReport = null    // TODO: Implement report storage
+        };
+    }
+
+    /// <summary>
+    /// Analyze a repository using LLM.
+    /// </summary>
+    public Task<RepoInsights?> AnalyzeRepositoryAsync(
+        string repositoryFullName, 
+        bool force = false, 
+        CancellationToken ct = default)
+    {
+        // TODO: Implement LLM analysis
+        throw new InvalidOperationException("LLM analysis not configured. Set OPENAI_API_KEY or ANTHROPIC_API_KEY.");
+    }
+
+    #endregion
+}
+
+public class ReportResult
+{
+    public bool Success { get; set; }
+    public double? NewScore { get; set; }
+    public string? Message { get; set; }
 }
 
 #region DTOs
