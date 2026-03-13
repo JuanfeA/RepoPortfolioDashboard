@@ -60,6 +60,8 @@ artifacts/
 # User-specific files
 appsettings.*.local.json
 secrets.json
+.env
+!.env.example
 
 # Test results
 TestResults/
